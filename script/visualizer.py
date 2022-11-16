@@ -39,7 +39,7 @@ class Visualizer:
                 plt.plot(self.caches[node_id]['x'], self.caches[node_id]['y'], self.color[node_id - 1][0])
                 plt.plot(target_point[0], target_point[1], self.color[node_id - 1][1])
                 plt.plot(path[0], path[1], self.color[node_id - 1][2])
-                legend += ['node ' + str(node_id), 'target_point ' + str(node_id), 'path ' + str(node_id)]
+                legend += ['node ' + str(node_id), 'target ' + str(node_id), 'path ' + str(node_id)]
             plt.xlabel('x/m')
             plt.ylabel('y/m')
             plt.legend(legend)

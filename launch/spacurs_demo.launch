@@ -1,13 +1,15 @@
 <launch>
-    <node pkg="nlink_parser" type="linktrack" name="linktrack0">
+    <node pkg="nlink_parser" type="linktrack" name="linktrack">
         <param name="port_name" value="/dev/ttyUSB0"/>
         <param name="baud_rate" value="921600"/>
     </node>
-    <node pkg="spacurs" type="spacurs_demo.py" name="spacurs_demo0" output="screen">
+    <node pkg="spacurs" type="spacurs_demo.py" name="spacurs_demo" output="screen">
         <param name="port" value="/dev/ttyUSB1"/>
         <param name="baud_rate" value="115200"/>
         <param name="remote_nodes" value="['15', '16']"/>
     </node>
-    <node pkg="spacurs" type="measurement.py" name="measurement0"/>
-    <node pkg="spacurs" type="visualizer.py" name="visualizer0"/>
+    <node pkg="spacurs" type="measurement.py" name="measurement">
+        <param name="filter" value="True"/>
+    </node>
+    <node pkg="spacurs" type="visualizer.py" name="visualizer"/>
 </launch>
