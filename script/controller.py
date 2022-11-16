@@ -7,6 +7,7 @@ from tools import constraint
 
 class FuzzyController:
     def __init__(self, speed_min, speed_max, r_min, r_mid, r_max, dr_max):
+        self.r = None
         self.r_min = r_min
         self.r_max = r_max
         self.dr_max = dr_max
@@ -56,11 +57,13 @@ class FuzzyController:
         control_system = ctrl.ControlSystem([rule1, rule2, rule3])
         self.fuzzy_controller = ctrl.ControlSystemSimulation(control_system)
 
-    def output(self, r, dr):
+    def output(self, r):
+        dr = 0 if self.r is None else (r - self.r)
+        self.r = r
         self.fuzzy_controller.input['radius'] = constraint(r, self.r_min, self.r_max)
         self.fuzzy_controller.input['radius change'] = constraint(dr, -self.dr_max, self.dr_max)
         self.fuzzy_controller.compute()
-        return int(self.fuzzy_controller.output['speed'])
+        return self.fuzzy_controller.output['speed']
 
 
 class PurePursuitController:
@@ -72,4 +75,4 @@ class PurePursuitController:
 
     def output(self, error, preview_distance):
         steer = 95 - atan(self.kp * 2 * self.length * error / preview_distance ** 2) * 180 / np.pi
-        return int(constraint(steer, self.steer_min, self.steer_max))
+        return constraint(steer, self.steer_min, self.steer_max)
