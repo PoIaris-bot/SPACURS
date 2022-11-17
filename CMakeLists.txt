@@ -54,11 +54,6 @@ find_package(catkin REQUIRED COMPONENTS
 #   Message1.msg
 #   Message2.msg
 # )
-add_message_files(
-  FILES
-  Point.msg
-  PointArray.msg
-)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -215,4 +210,3 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-
