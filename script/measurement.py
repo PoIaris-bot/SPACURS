@@ -16,28 +16,18 @@ class LKF:
             [0, 0, 1, 0],
             [0, 0, 0, 1],
             [0, 0, 0, 0],
-            [0, 0, 0, 0.]
+            [0, 0, 0, 0]
         ])
 
         self.A = None
         self.C = np.eye(4)
 
-        self.Q_tilde = np.array([
-            [0.01, 0, 0, 0],
-            [0, 0.01, 0, 0],
-            [0, 0, 0.01, 0],
-            [0, 0, 0, 0.01]
-        ])
+        self.Q_tilde = 0.01 * np.eye(4)
         self.Q = None
-        self.R = np.array([
-            [0.01, 0, 0, 0],
-            [0, 0.01, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
-        ])
+        self.R = 0.01 * np.eye(4)
 
     def predict(self, dt):
-        self.A = self.A_tilde + np.eye(4) * dt
+        self.A = self.A_tilde * dt + np.eye(4)
         self.Q = self.Q_tilde * dt
 
         self.x = np.dot(self.A, self.x)

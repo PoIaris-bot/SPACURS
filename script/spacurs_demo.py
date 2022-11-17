@@ -12,7 +12,7 @@ class Node:
         self.x = x0
         self.path = None
 
-        self.r = 1.2
+        self.r = 1
         self.path_point_num = 250
 
         self.target_id = None
@@ -22,8 +22,8 @@ class Node:
         self.preview = 10
         self.segment = 20
 
-        self.speed_controller = FuzzyController(speed_min=1, speed_max=5, r_min=0.1, r_mid=0.7, r_max=5, dr_max=0.3)
-        self.steer_controller = PurePursuitController(kp=0.25, length=0.2, steer_min=80, steer_max=110)
+        self.speed_controller = FuzzyController(speed_min=1, speed_max=4, r_min=0.1, r_mid=0.7, r_max=5, dr_max=0.3)
+        self.steer_controller = PurePursuitController(kp=0.2, length=0.2, steer_min=80, steer_max=110)
 
     def init_path(self):
         x, y, theta = self.x
@@ -58,7 +58,7 @@ class Node:
     def state(self):
         x = self.x[:2].tolist()
         target_point = self.path[self.target_id, :].tolist()
-        path = self.path.ravel().tolist()
+        path = self.path.T.ravel().tolist()
         return x + target_point + path
 
 
