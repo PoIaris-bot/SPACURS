@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import rospy
 import matplotlib.pyplot as plt
 from std_msgs.msg import Float32MultiArray

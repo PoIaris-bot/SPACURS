@@ -106,7 +106,6 @@ class SPACURS:
                 self.publisher.publish(Float32MultiArray(data=data))
 
 
-
 if __name__ == '__main__':
     try:
         spacurs = SPACURS()
