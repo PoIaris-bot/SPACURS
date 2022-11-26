@@ -40,9 +40,6 @@ class LKF:
         self.x = self.x + np.dot(kalman_gain, innovation)
         self.P = self.P - np.dot(np.dot(kalman_gain, self.C), self.P)
 
-    def state(self):
-        return self.x
-
 
 class Measurement:
     def __init__(self):
@@ -79,9 +76,9 @@ class Measurement:
                 node_id = node_ids[i * 2] / 2 + 1
                 head = self.LKFs[node_ids[i * 2]]
                 rear = self.LKFs[node_ids[i * 2 + 1]]
-                x = (head.state()[0] + rear.state()[0]) / 2
-                y = (head.state()[1] + rear.state()[1]) / 2
-                theta = atan2(head.state()[1] - rear.state()[1], head.state()[0] - rear.state()[0])
+                x = (head.x[0] + rear.x[0]) / 2
+                y = (head.x[1] + rear.x[1]) / 2
+                theta = atan2(head.x[1] - rear.x[1], head.x[0] - rear.x[0])
                 data += [node_id, x, y, theta]
             self.publisher.publish(Float32MultiArray(data=data))
             self.t = t
