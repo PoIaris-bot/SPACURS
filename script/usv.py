@@ -35,8 +35,8 @@ class USV:
         self.Rth = 0.5
         self.length = 0.7
         self.Delta = 2 * self.length
-        self.speed_controller = PID(9, 0, 1)
-        self.steer_controller = PID(5, 0, 1)
+        self.speed_controller = PID(45, 0, 1)
+        self.steer_controller = PID(25, 0, 1)
 
     def update(self, x):
         self.x = x
@@ -62,10 +62,10 @@ class USV:
         dist = np.linalg.norm(self.x[:2] - target)
         base_speed = self.speed_controller.output(dist)
         steer_speed = self.steer_controller.output(phi_e)
-        left_speed = str(int(constraint(base_speed + steer_speed, 0, 20)))
+        left_speed = str(int(constraint(base_speed + steer_speed, 0, 90)))
         if len(left_speed) == 1:
             left_speed = '0' + left_speed
-        right_speed = str(int(constraint(base_speed - steer_speed, 0, 20)))
+        right_speed = str(int(constraint(base_speed - steer_speed, 0, 90)))
         if len(right_speed) == 1:
             right_speed = '0' + right_speed
 
