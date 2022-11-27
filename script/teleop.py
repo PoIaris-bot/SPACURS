@@ -4,8 +4,8 @@ import pygame
 from xbee import XBeeSender
 
 
-def map_speed(value):
-    speed = str(round((value + 1) * 10))
+def map_speed(value):  # [-1, 1] -> [0, 90]
+    speed = str(round((value + 1) * 45))
     if len(speed) == 1:
         speed = '0' + speed
     return speed
