@@ -2,6 +2,8 @@ import numpy as np
 from math import atan, atan2
 from path_planning import rrt
 
+CONFIG_FILE_PATH = '/home/polaris/catkin_ws/src/spacurs/script/config.ini'
+
 
 def constraint(value, lower, upper):
     if value > upper:
@@ -29,14 +31,14 @@ class PID:
 class USV:
     def __init__(self, x0, x_goal):
         self.x = x0
-        self.path = rrt(x0, x_goal)
+        self.path = rrt(x0, x_goal, CONFIG_FILE_PATH)
         self.path_point_num = self.path.shape[0]
         self.target_idx = 1
-        self.Rth = 0.5
+        self.Rth = 1
         self.length = 0.7
         self.Delta = 2 * self.length
-        self.speed_controller = PID(45, 0, 1)
-        self.steer_controller = PID(25, 0, 1)
+        self.speed_controller = PID(1, 0, 1)
+        self.steer_controller = PID(1, 0, 1)
 
     def update(self, x):
         self.x = x
@@ -49,7 +51,7 @@ class USV:
     def control(self):
         target = self.path[self.target_idx, :]
         target_prev = self.path[self.target_idx - 1, :]
-        alpha = atan2(target[1] - target_prev[1], target[0] - target_prev[0])
+        alpha = np.pi / 2 - atan2(target[1] - target_prev[1], target[0] - target_prev[0])
         error = np.sin(alpha) * (self.x[0] - target[0]) - np.cos(alpha) * (self.x[1] - target[1])
         phi_d = alpha + atan(-error / self.Delta)
         phi = np.pi / 2 - self.x[2]

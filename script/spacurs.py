@@ -18,6 +18,8 @@ class SPACURS:
         while self.xbee_sender is None:
             self.xbee_sender = XBeeSender(port, baud_rate, remote_nodes)
 
+        rospy.on_shutdown(self.exit)
+
         self.control_rate = 10
         self.measure_rate = 50
         self.control_count = 0
@@ -51,6 +53,9 @@ class SPACURS:
                     command = self.USVs[node_id].control()
                     self.xbee_sender.send_to_one(str(node_id), command)
                 self.publisher.publish(Float32MultiArray(data=data))
+
+    def exit(self):
+        self.xbee_sender.send_to_all('10000')
 
 
 if __name__ == '__main__':

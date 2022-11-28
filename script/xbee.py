@@ -50,9 +50,9 @@ class XBeeSender:
                     failed_nodes.append(remote_node)
                 time.sleep(0.01)
             if succeeded_nodes:
-                print('Succeeded in sending message', message, 'to end device', succeeded_nodes)
+                print('Succeeded in sending message', message, 'to end devices', succeeded_nodes)
             if failed_nodes:
-                print('Failed to send message', message, 'to end device', failed_nodes)
+                print('Failed to send message', message, 'to end devices', failed_nodes)
         else:
             print('No connected end device')
 

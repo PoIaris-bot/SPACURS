@@ -2,7 +2,7 @@ import numpy as np
 import configparser
 
 
-def get_area(file_name, safe_margin=2):
+def get_area(file_name, safe_margin=1):
     config = configparser.ConfigParser()
     config.read(file_name)
     x0, y0 = eval(config.get('COORDINATE', 'x0')), eval(config.get('COORDINATE', 'y0'))
@@ -10,15 +10,15 @@ def get_area(file_name, safe_margin=2):
     x2, y2 = eval(config.get('COORDINATE', 'x2')), eval(config.get('COORDINATE', 'y2'))
     x3, y3 = eval(config.get('COORDINATE', 'x3')), eval(config.get('COORDINATE', 'y3'))
 
-    x_min = max(x0, x1) + safe_margin
-    x_max = min(x2, x3) - safe_margin
+    x_min = max(x0, x1)
+    x_max = min(x2, x3)
     y_min = max(y0, y3) + safe_margin
     y_max = min(y1, y2) - safe_margin
     return x_min, y_min, x_max, y_max
 
 
-def rrt(x0, x_goal):
-    x_min, y_min, x_max, y_max = get_area('config.ini')
+def rrt(x0, x_goal, config_file_name):
+    x_min, y_min, x_max, y_max = get_area(config_file_name)
     if x_goal[0] < x_min:
         x_goal[0] = x_min
     if x_goal[0] > x_max:
@@ -28,7 +28,7 @@ def rrt(x0, x_goal):
     if x_goal[1] > y_max:
         x_goal[1] = y_max
 
-    step = 2
+    step = 5
 
     x_root = x0[:2] + step * np.array([np.cos(x0[2]), np.sin(x0[2])])
     sample_rate = 0.3

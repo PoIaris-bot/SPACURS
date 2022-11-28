@@ -1,12 +1,22 @@
 #!/usr/bin/env python
 import rospy
+import time
 import matplotlib.pyplot as plt
 from std_msgs.msg import Float32MultiArray
+
+RESULT_FILE_PATH = '/home/polaris/catkin_ws/src/spacurs/result/'
+
+
+def save():
+    file_name = '{}.png'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    plt.savefig(RESULT_FILE_PATH + file_name)
+    plt.ioff()
 
 
 class Visualizer:
     def __init__(self):
         rospy.init_node('visualizer', anonymous=True)
+        rospy.on_shutdown(save)
         plt.ion()
 
         node_name = rospy.get_name()
