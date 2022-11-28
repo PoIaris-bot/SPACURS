@@ -13,6 +13,15 @@ def constraint(value, lower, upper):
     return value
 
 
+def angle_remap(value):
+    while value >= np.pi or value < -np.pi:
+        if value >= np.pi:
+            value -= 2 * np.pi
+        if value < -np.pi:
+            value += 2 * np.pi
+    return value
+
+
 class PID:
     def __init__(self, kp, ki, kd):
         self.kp = kp
@@ -36,9 +45,9 @@ class USV:
         self.target_idx = 1
         self.Rth = 1
         self.length = 0.7
-        self.Delta = 2 * self.length
-        self.speed_controller = PID(1, 0, 1)
-        self.steer_controller = PID(1, 0, 1)
+        self.Delta = 3 * self.length
+        self.speed_controller = PID(35, 0, 1)
+        self.steer_controller = PID(20, 0, 1)
 
     def update(self, x):
         self.x = x
@@ -51,19 +60,18 @@ class USV:
     def control(self):
         target = self.path[self.target_idx, :]
         target_prev = self.path[self.target_idx - 1, :]
-        alpha = np.pi / 2 - atan2(target[1] - target_prev[1], target[0] - target_prev[0])
-        error = np.sin(alpha) * (self.x[0] - target[0]) - np.cos(alpha) * (self.x[1] - target[1])
-        phi_d = alpha + atan(-error / self.Delta)
-        phi = np.pi / 2 - self.x[2]
-        phi_e = phi_d - phi
-        if phi_e > np.pi:
-            phi_e -= 2 * np.pi
-        if phi_e < -np.pi:
-            phi_e += 2 * np.pi
+        beta = atan2(target[1] - target_prev[1], target[0] - target_prev[0])
+        alpha = angle_remap(np.pi / 2 - beta)
+
+        error = np.sin(beta) * (self.x[0] - target[0]) - np.cos(beta) * (self.x[1] - target[1])
+        phi_d = angle_remap(alpha + atan(-error / self.Delta))
+        phi = angle_remap(np.pi / 2 - self.x[2])
+        phi_e = angle_remap(phi_d - phi)
 
         dist = np.linalg.norm(self.x[:2] - target)
-        base_speed = self.speed_controller.output(dist)
-        steer_speed = self.steer_controller.output(phi_e)
+        base_speed = constraint(self.speed_controller.output(dist), 0, 90)
+        steer_speed = constraint(self.steer_controller.output(phi_e), -20, 20)
+
         left_speed = str(int(constraint(base_speed + steer_speed, 0, 90)))
         if len(left_speed) == 1:
             left_speed = '0' + left_speed
