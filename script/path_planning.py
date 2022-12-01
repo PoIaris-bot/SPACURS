@@ -18,7 +18,9 @@ def get_area(file_name, safe_margin=1):
 
 
 def rrt(x0, x_goal, config_file_name):
+    print('path planning start')
     x_min, y_min, x_max, y_max = get_area(config_file_name)
+    x_min, y_min, x_max, y_max = (0, 0, 50, 40)
     if x_goal[0] < x_min:
         x_goal[0] = x_min
     if x_goal[0] > x_max:
@@ -39,6 +41,7 @@ def rrt(x0, x_goal, config_file_name):
     i = 0
     flag = False
     while i < max_tree_size:
+        print(i)
         if np.random.rand() < sample_rate:
             x_rand = x_goal
         else:
