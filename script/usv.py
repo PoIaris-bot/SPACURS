@@ -1,8 +1,18 @@
+#!/usr/bin/env python
+import rospy
+import pygame
 import numpy as np
-from math import atan, atan2
-from path_planning import rrt
+from std_msgs.msg import Int32MultiArray, Float32MultiArray
+from spacurs.msg import Path
 
-CONFIG_FILE_PATH = '/home/polaris/catkin_ws/src/spacurs/script/config.ini'
+
+def remap(value):
+    while value >= np.pi or value < -np.pi:
+        if value >= np.pi:
+            value -= 2 * np.pi
+        if value < -np.pi:
+            value += 2 * np.pi
+    return value
 
 
 def constraint(value, lower, upper):
@@ -13,16 +23,48 @@ def constraint(value, lower, upper):
     return value
 
 
-def angle_remap(value):
-    while value >= np.pi or value < -np.pi:
-        if value >= np.pi:
-            value -= 2 * np.pi
-        if value < -np.pi:
-            value += 2 * np.pi
-    return value
+def generate_path(x, y, theta, x_goal, y_goal, r1=3, r2=2):
+    theta_goal = remap(np.arctan2(y_goal - y, x_goal - x))
+    flag = remap(theta - theta_goal) < 0
+
+    if flag:
+        x_o = x + r1 * np.cos(theta + np.pi / 2)
+        y_o = y + r1 * np.sin(theta + np.pi / 2)
+    else:
+        x_o = x + r1 * np.cos(theta - np.pi / 2)
+        y_o = y + r1 * np.sin(theta - np.pi / 2)
+
+    beta = remap(np.arctan2(y_goal - y_o, x_goal - x_o))
+    alpha = np.arccos(r1 / np.sqrt((y_goal - y_o) ** 2 + (x_goal - x_o) ** 2))
+    gamma1 = remap(np.arctan2(y - y_o, x - x_o)) + 2 * np.pi
+    if flag:
+        gamma2 = remap(beta - alpha) + 2 * np.pi
+    else:
+        gamma2 = remap(beta + alpha) + 2 * np.pi
+
+    x_c = x_o + r1 * np.cos(gamma2)
+    y_c = y_o + r1 * np.sin(gamma2)
+
+    if flag:
+        if gamma2 < gamma1:
+            gamma2 += 2 * np.pi
+    else:
+        if gamma2 > gamma1:
+            gamma1 += 2 * np.pi
+
+    gammas = np.arange(gamma1, gamma2, np.pi / 10 if flag else -np.pi / 10)
+    arc = np.array([[x_o, y_o]]).T + r1 * np.array([np.cos(gammas), np.sin(gammas)])
+    length = np.sqrt((y_goal - y_c) ** 2 + (x_goal - x_c) ** 2)
+    line = np.array([np.linspace(x_c, x_goal, round(length / 0.5)), np.linspace(y_c, y_goal, round(length / 0.5))])
+    theta_end = remap(np.arctan2(y_goal - y_c, x_goal - x_c)) + np.pi / 6
+    thetas = np.arange(theta_end, theta_end + 2 * np.pi, np.pi / 10)
+    circle = np.array([[x_goal, y_goal]]).T + r2 * np.array([np.cos(thetas), np.sin(thetas)])  # 20 points
+    path = np.hstack([arc, line, circle])
+    idx = arc.shape[1] + line.shape[1]
+    return path, idx
 
 
-class PID:
+class PIDController:
     def __init__(self, kp, ki, kd):
         self.kp = kp
         self.ki = ki
@@ -38,52 +80,175 @@ class PID:
 
 
 class USV:
-    def __init__(self, x0, x_goal):
-        self.x = x0
-        self.path = rrt(x0, x_goal, CONFIG_FILE_PATH)
-        self.path_point_num = self.path.shape[0]
-        self.target_idx = 1
-        self.Rth = 1
-        self.length = 0.7
-        self.Delta = 3 * self.length
-        self.speed_controller = PID(35, 0, 1)
-        self.steer_controller = PID(80, 0, 1)
+    def __init__(self):
+        rospy.init_node('usv', anonymous=True)
 
-    def update(self, x):
-        self.x = x
-        dist = np.linalg.norm(x[:2] - self.path[self.target_idx, :])
-        if dist < self.Rth:
-            self.target_idx += 1
-            if self.target_idx >= self.path_point_num:
-                self.target_idx = self.path_point_num - 1
+        pygame.init()
+        pygame.joystick.init()
+        joystick_connected = False
 
-    def control(self):
-        target = self.path[self.target_idx, :]
-        target_prev = self.path[self.target_idx - 1, :]
-        beta = atan2(target[1] - target_prev[1], target[0] - target_prev[0])
-        alpha = angle_remap(np.pi / 2 - beta)
+        if pygame.joystick.get_count() > 0:
+            _ = pygame.joystick.Joystick(0)
+            rospy.loginfo('joystick connected')
+            joystick_connected = True
+        else:
+            rospy.loginfo('no joystick connected')
 
-        error = np.sin(beta) * (self.x[0] - target[0]) - np.cos(beta) * (self.x[1] - target[1])
-        phi_d = angle_remap(alpha + atan(-error / self.Delta))
-        phi = angle_remap(np.pi / 2 - self.x[2])
-        phi_e = angle_remap(phi_d - phi)
+        self.mode = 'lock'
+        mode_request = None
+        rospy.loginfo('lock mode')
 
-        dist = np.linalg.norm(self.x[:2] - target)
-        base_speed = constraint(self.speed_controller.output(dist), 0, 90)
-        steer_speed = constraint(self.steer_controller.output(phi_e), -80, 80)
+        button_mode_dict = {0: 'auto', 1: 'manual', 3: 'lock'}
+        left_speed, right_speed = 0, 0
+        self.control_rate = 10
+        self.measure_rate = 50
+        self.control_count = 0
 
-        left_speed = str(int(constraint(base_speed + steer_speed, 0, 90)))
-        if len(left_speed) == 1:
-            left_speed = '0' + left_speed
-        right_speed = str(int(constraint(base_speed - steer_speed, 0, 90)))
-        if len(right_speed) == 1:
-            right_speed = '0' + right_speed
+        self.path = None
+        self.circle_idx = None
+        self.num_path_point = None
+        self.target_idx = None
+        self.closest_idx = None
+        self.speed_controller = None
+        self.steer_controller = None
 
-        command = '1' + left_speed + right_speed
-        return command
+        self.x_d = None
+        self.y_d = None
+        self.theta_d = None
+        self.timestamp = rospy.get_time()
 
-    def data(self):
-        x = self.x[:2].tolist()
-        target_point = self.path[self.target_idx, :].tolist()
-        path = self.path.T.ravel().tolist()
-        return x + target_point + [self.path_point_num] + path
+        self.preview = 5
+        self.segment = 10  # segment < 20
+
+        self.control_publisher = rospy.Publisher('control', Int32MultiArray, queue_size=1)
+        self.path_publisher = rospy.Publisher('path', Path, queue_size=1)
+        rospy.Subscriber('/position', Float32MultiArray, self.callback, queue_size=1)
+
+        last_connect_request = rospy.get_time()
+        last_publish = rospy.get_time()
+
+        while not rospy.is_shutdown():
+            # reconnect joystick
+            if rospy.get_time() - last_connect_request > 5.0:
+                if pygame.joystick.get_count() == 0 and joystick_connected:
+                    rospy.loginfo('joystick disconnected')
+                    joystick_connected = False
+
+                if not joystick_connected:
+                    pygame.joystick.init()
+                    if pygame.joystick.get_count() > 0:
+                        _ = pygame.joystick.Joystick(0)
+                        joystick_connected = True
+                        rospy.loginfo('joystick connected')
+                last_connect_request = rospy.get_time()
+
+            # read joystick input
+            for event in pygame.event.get():
+                if event.type == pygame.JOYBUTTONDOWN:
+                    if event.button in button_mode_dict.keys():
+                        mode_request = button_mode_dict[event.button]
+
+                if event.type == pygame.JOYAXISMOTION:
+                    if event.axis == 5:  # LT: left motor speed
+                        left_speed = int((event.value + 1) * 45)
+                    if event.axis == 4:  # RT: right motor speed
+                        right_speed = int((event.value + 1) * 45)
+
+            if mode_request is not None:
+                self.mode = mode_request
+                rospy.loginfo(f'switch to {mode_request} mode')
+                mode_request = None
+
+            if rospy.get_time() - last_publish > 1 / self.control_rate:
+                if self.mode == 'lock':
+                    self.control_publisher.publish(Int32MultiArray(data=[1, 0, 0]))
+                elif self.mode == 'manual':
+                    self.control_publisher.publish(Int32MultiArray(data=[1, left_speed, right_speed]))
+                last_publish = rospy.get_time()
+
+    def callback(self, message):
+        if self.mode == 'auto':
+            x, y, theta, v_x, v_y, omega = message.data
+            v = np.sqrt(v_x ** 2 + v_y ** 2)
+            if self.path is None:
+                x_goal, y_goal = 30, 30
+                # x_goal, y_goal = map(eval, input('please enter a destination for usv: ').split())
+                self.path, self.circle_idx = generate_path(x, y, theta, x_goal, y_goal)
+                self.num_path_point = self.path.shape[1]
+                self.closest_idx = 0
+                self.target_idx = self.closest_idx + self.preview
+
+                self.speed_controller = PIDController(90, 0, 0)  # TODO
+                self.steer_controller = PIDController(65, 0, 0)  # TODO
+
+                self.path_publisher.publish(Path(
+                    x=[self.target_idx, *self.path[0, :].tolist()],
+                    y=[self.target_idx, *self.path[1, :].tolist()]
+                ))
+            else:
+                if self.closest_idx + self.segment > self.num_path_point - 1:
+                    if self.closest_idx == self.num_path_point:
+                        path_segment = self.path[:, self.circle_idx:self.circle_idx + self.segment]
+                    else:
+                        path_segment = np.hstack(
+                            self.path[:, self.closest_idx:],
+                            self.path[:, self.circle_idx:self.circle_idx + self.segment + self.closest_idx - self.num_path_point]
+                        )
+                else:
+                    path_segment = self.path[:, self.closest_idx:self.closest_idx + self.segment]
+                distances = np.linalg.norm(np.array([[x, y]]).T - path_segment, axis=0)
+                self.closest_idx += np.argmin(distances)
+                if self.closest_idx > self.num_path_point - 1:
+                    self.closest_idx += self.circle_idx - self.num_path_point
+                self.target_idx = self.closest_idx + self.preview
+                if self.target_idx > self.num_path_point - 1:
+                    self.target_idx += self.circle_idx - self.num_path_point
+
+                self.control_count += 1
+                if self.control_count > self.measure_rate / self.control_rate:
+                    self.control_count = 0
+                    timestamp = rospy.get_time()
+                    dt = timestamp - self.timestamp
+
+                    x_d = self.path[0, self.target_idx]
+                    y_d = self.path[1, self.target_idx]
+                    x_e = x_d - x
+                    y_e = y_d - y
+                    u1 = (x_d - self.x_d) / dt + 0.5 * np.tanh(0.4 * x_e)  # TODO
+                    u2 = (y_d - self.y_d) / dt + 0.5 * np.tanh(0.4 * y_e)  # TODO
+                    v_d = np.sqrt(u1 ** 2 + u2 ** 2)
+                    v_e = v_d - v
+
+                    theta_d = np.arctan2(u2, u1)  # [-pi, pi]
+                    s = remap(theta_d - theta)  # [-pi, pi]
+                    omega_d = (theta_d - self.theta_d) / dt + 0.2 * s + 0.1 * np.sign(s)  # TODO
+                    omega_e = omega_d - omega
+
+                    base_speed = constraint(45 + self.speed_controller.output(v_e), 0, 90)  # TODO
+                    steer_speed = constraint(self.steer_controller.output(omega_e), -45, 45)  # TODO
+                    left_speed = int(constraint(base_speed - steer_speed, 0, 90))
+                    right_speed = int(constraint(base_speed + steer_speed, 0, 90))
+                    self.control_publisher.publish(Int32MultiArray(data=[1, left_speed, right_speed]))
+
+                    self.path_publisher.publish(Path(
+                        x=[self.target_idx, *self.path[0, :].tolist()],
+                        y=[self.target_idx, *self.path[1, :].tolist()]
+                    ))
+
+                    self.x_d = x_d
+                    self.y_d = y_d
+                    self.theta_d = theta_d
+                    self.timestamp = timestamp
+        else:
+            self.path = None
+            self.control_count += 1
+            if self.control_count > self.measure_rate / self.control_rate:
+                self.control_count = 0
+                self.path_publisher.publish(Path())
+
+
+if __name__ == '__main__':
+    try:
+        USV()
+    except rospy.ROSInterruptException:
+        pass
