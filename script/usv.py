@@ -52,12 +52,12 @@ def generate_path(x, y, theta, x_goal, y_goal, r1=3, r2=2):
         if gamma2 > gamma1:
             gamma1 += 2 * np.pi
 
-    gammas = np.arange(gamma1, gamma2, np.pi / 10 if flag else -np.pi / 10)
+    gammas = np.arange(gamma1, gamma2, np.pi / 20 if flag else -np.pi / 20)
     arc = np.array([[x_o, y_o]]).T + r1 * np.array([np.cos(gammas), np.sin(gammas)])
     length = np.sqrt((y_goal - y_c) ** 2 + (x_goal - x_c) ** 2)
     line = np.array([np.linspace(x_c, x_goal, round(length / 0.5)), np.linspace(y_c, y_goal, round(length / 0.5))])
     theta_end = remap(np.arctan2(y_goal - y_c, x_goal - x_c)) + np.pi / 6
-    thetas = np.arange(theta_end, theta_end + 2 * np.pi, np.pi / 10)
+    thetas = np.arange(theta_end, theta_end + 2 * np.pi, np.pi / 15)
     circle = np.array([[x_goal, y_goal]]).T + r2 * np.array([np.cos(thetas), np.sin(thetas)])  # 20 points
     path = np.hstack([arc, line, circle])
     idx = arc.shape[1] + line.shape[1]
@@ -117,8 +117,8 @@ class USV:
         self.theta_d = None
         self.timestamp = rospy.get_time()
 
-        self.preview = 5
-        self.segment = 10  # segment < 20
+        self.preview = 10
+        self.segment = 20  # segment < 30
 
         self.control_publisher = rospy.Publisher('control', Int32MultiArray, queue_size=1)
         self.path_publisher = rospy.Publisher('path', Path, queue_size=1)
@@ -178,22 +178,22 @@ class USV:
                 self.closest_idx = 0
                 self.target_idx = self.closest_idx + self.preview
 
-                self.speed_controller = PIDController(90, 0, 0)  # TODO
-                self.steer_controller = PIDController(65, 0, 0)  # TODO
+                self.speed_controller = PIDController(15, 0, 0)  # TODO
+                self.steer_controller = PIDController(20, 0, 0)  # TODO
 
                 self.path_publisher.publish(Path(
-                    x=[self.target_idx, *self.path[0, :].tolist()],
-                    y=[self.target_idx, *self.path[1, :].tolist()]
+                    x=[self.closest_idx, self.target_idx, *self.path[0, :].tolist()],
+                    y=[self.closest_idx, self.target_idx, *self.path[1, :].tolist()]
                 ))
             else:
                 if self.closest_idx + self.segment > self.num_path_point - 1:
                     if self.closest_idx == self.num_path_point:
                         path_segment = self.path[:, self.circle_idx:self.circle_idx + self.segment]
                     else:
-                        path_segment = np.hstack(
+                        path_segment = np.hstack([
                             self.path[:, self.closest_idx:],
                             self.path[:, self.circle_idx:self.circle_idx + self.segment + self.closest_idx - self.num_path_point]
-                        )
+                        ])
                 else:
                     path_segment = self.path[:, self.closest_idx:self.closest_idx + self.segment]
                 distances = np.linalg.norm(np.array([[x, y]]).T - path_segment, axis=0)
@@ -212,27 +212,28 @@ class USV:
 
                     x_d = self.path[0, self.target_idx]
                     y_d = self.path[1, self.target_idx]
-                    x_e = x_d - x
-                    y_e = y_d - y
-                    u1 = (x_d - self.x_d) / dt + 0.5 * np.tanh(0.4 * x_e)  # TODO
-                    u2 = (y_d - self.y_d) / dt + 0.5 * np.tanh(0.4 * y_e)  # TODO
+                    u1 = 2 * np.tanh(x_d - x)  # TODO
+                    u2 = 2 * np.tanh(y_d - y)  # TODO
+                    u1 += (x_d - self.x_d) / dt if self.x_d is not None else 0
+                    u2 += (y_d - self.y_d) / dt if self.y_d is not None else 0
                     v_d = np.sqrt(u1 ** 2 + u2 ** 2)
                     v_e = v_d - v
 
                     theta_d = np.arctan2(u2, u1)  # [-pi, pi]
                     s = remap(theta_d - theta)  # [-pi, pi]
-                    omega_d = (theta_d - self.theta_d) / dt + 0.2 * s + 0.1 * np.sign(s)  # TODO
+                    omega_d = 0.9 * s + 0.1 * np.sign(s)  # TODO
+                    omega_d += (theta_d - self.theta_d) / dt if self.theta_d is not None else 0
                     omega_e = omega_d - omega
 
-                    base_speed = constraint(45 + self.speed_controller.output(v_e), 0, 90)  # TODO
-                    steer_speed = constraint(self.steer_controller.output(omega_e), -45, 45)  # TODO
+                    base_speed = 45 + constraint(self.speed_controller.output(v_e), -45, 45)  # TODO
+                    steer_speed = constraint(self.steer_controller.output(omega_e), -60, 60)  # TODO
                     left_speed = int(constraint(base_speed - steer_speed, 0, 90))
                     right_speed = int(constraint(base_speed + steer_speed, 0, 90))
                     self.control_publisher.publish(Int32MultiArray(data=[1, left_speed, right_speed]))
 
                     self.path_publisher.publish(Path(
-                        x=[self.target_idx, *self.path[0, :].tolist()],
-                        y=[self.target_idx, *self.path[1, :].tolist()]
+                        x=[self.closest_idx, self.target_idx, *self.path[0, :].tolist()],
+                        y=[self.closest_idx, self.target_idx, *self.path[1, :].tolist()]
                     ))
 
                     self.x_d = x_d

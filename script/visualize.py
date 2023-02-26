@@ -28,6 +28,7 @@ def callback(message):
 if __name__ == '__main__':
     cache = {'x': [], 'y': []}
     path = None
+    closest_idx = None
     target_idx = None
     Process(target=subscriber, args=()).start()
     plt.ion()
@@ -40,14 +41,16 @@ if __name__ == '__main__':
                 cache['y'].append(message.data[1])
             elif isinstance(message, Path):
                 if message.x:
-                    target_idx = int(message.x[0])
-                    path = [message.x[1:], message.y[1:]]
+                    closest_idx = int(message.x[0])
+                    target_idx = int(message.x[1])
+                    path = [message.x[2:], message.y[2:]]
                 else:
                     path = None
 
             plt.plot(cache['x'], cache['y'], 'g.')
             if path is not None:
-                plt.plot(path[0], path[1], 'b.-', path[0][target_idx], path[1][target_idx], 'r*')
+                plt.plot(path[0], path[1], 'b.-')
+                plt.plot(path[0][closest_idx], path[1][closest_idx], 'r*', path[0][target_idx], path[1][target_idx], 'r*')
                 plt.legend(['usv', 'path', 'target'])
             else:
                 plt.legend(['usv'])
