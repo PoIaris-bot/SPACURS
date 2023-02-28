@@ -100,7 +100,7 @@ class USV:
 
         button_mode_dict = {0: 'auto', 1: 'manual', 3: 'lock'}
         left_speed, right_speed = 0, 0
-        self.control_rate = 10
+        self.control_rate = 15
         self.measure_rate = 50
         self.control_count = 0
 
@@ -117,8 +117,8 @@ class USV:
         self.theta_d = None
         self.timestamp = rospy.get_time()
 
-        self.preview = 10
-        self.segment = 20  # segment < 30
+        self.preview = 5
+        self.segment = 10  # segment < 30
 
         self.control_publisher = rospy.Publisher('control', Int32MultiArray, queue_size=1)
         self.path_publisher = rospy.Publisher('path', Path, queue_size=1)
@@ -171,15 +171,15 @@ class USV:
             x, y, theta, v_x, v_y, omega = message.data
             v = np.sqrt(v_x ** 2 + v_y ** 2)
             if self.path is None:
-                x_goal, y_goal = 30, 30
+                x_goal, y_goal = 15, 15
                 # x_goal, y_goal = map(eval, input('please enter a destination for usv: ').split())
                 self.path, self.circle_idx = generate_path(x, y, theta, x_goal, y_goal)
                 self.num_path_point = self.path.shape[1]
                 self.closest_idx = 0
                 self.target_idx = self.closest_idx + self.preview
 
-                self.speed_controller = PIDController(15, 0, 0)  # TODO
-                self.steer_controller = PIDController(20, 0, 0)  # TODO
+                self.speed_controller = PIDController(50, 0, 0)  # TODO
+                self.steer_controller = PIDController(200, 0, 0)  # TODO
 
                 self.path_publisher.publish(Path(
                     x=[self.closest_idx, self.target_idx, *self.path[0, :].tolist()],
@@ -212,8 +212,8 @@ class USV:
 
                     x_d = self.path[0, self.target_idx]
                     y_d = self.path[1, self.target_idx]
-                    u1 = 2 * np.tanh(x_d - x)  # TODO
-                    u2 = 2 * np.tanh(y_d - y)  # TODO
+                    u1 = 0.5 * np.tanh(0.4 * (x_d - x))  # TODO
+                    u2 = 0.5 * np.tanh(0.4 * (y_d - y))  # TODO
                     u1 += (x_d - self.x_d) / dt if self.x_d is not None else 0
                     u2 += (y_d - self.y_d) / dt if self.y_d is not None else 0
                     v_d = np.sqrt(u1 ** 2 + u2 ** 2)
@@ -221,12 +221,12 @@ class USV:
 
                     theta_d = np.arctan2(u2, u1)  # [-pi, pi]
                     s = remap(theta_d - theta)  # [-pi, pi]
-                    omega_d = 0.9 * s + 0.1 * np.sign(s)  # TODO
+                    omega_d = 0.2 * s + 0.1 * np.sign(s)  # TODO
                     omega_d += (theta_d - self.theta_d) / dt if self.theta_d is not None else 0
                     omega_e = omega_d - omega
 
-                    base_speed = 45 + constraint(self.speed_controller.output(v_e), -45, 45)  # TODO
-                    steer_speed = constraint(self.steer_controller.output(omega_e), -60, 60)  # TODO
+                    base_speed = constraint(45 + self.speed_controller.output(v_e), 0, 90)  # TODO
+                    steer_speed = constraint(self.steer_controller.output(omega_e), -45, 45)  # TODO
                     left_speed = int(constraint(base_speed - steer_speed, 0, 90))
                     right_speed = int(constraint(base_speed + steer_speed, 0, 90))
                     self.control_publisher.publish(Int32MultiArray(data=[1, left_speed, right_speed]))

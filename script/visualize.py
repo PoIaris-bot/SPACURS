@@ -50,8 +50,9 @@ if __name__ == '__main__':
             plt.plot(cache['x'], cache['y'], 'g.')
             if path is not None:
                 plt.plot(path[0], path[1], 'b.-')
-                plt.plot(path[0][closest_idx], path[1][closest_idx], 'r*', path[0][target_idx], path[1][target_idx], 'r*')
-                plt.legend(['usv', 'path', 'target'])
+                plt.plot(path[0][closest_idx], path[1][closest_idx], 'r*')
+                plt.plot(path[0][target_idx], path[1][target_idx], 'r*')
+                plt.legend(['usv', 'path', 'closest', 'target'])
             else:
                 plt.legend(['usv'])
             plt.xlabel('x/m')

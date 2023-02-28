@@ -26,7 +26,10 @@ class XBee:
                 pass
         except XBeeDeviceException:
             pass
-
+        if self.node:
+            rospy.loginfo('xbee connected')
+        else:
+            rospy.loginfo('no xbee connected')
         rospy.Subscriber('/control', Int32MultiArray, self.callback, queue_size=1)
         rospy.spin()
 
@@ -34,7 +37,7 @@ class XBee:
         mode, left_speed, right_speed = map(str, message.data)
         left_speed = left_speed if len(left_speed) == 2 else '0' + left_speed
         right_speed = right_speed if len(right_speed) == 2 else '0' + right_speed
-        command = mode + left_speed + right_speed
+        command = 'cmd' + mode + left_speed + right_speed
         try:
             if self.node:
                 self.xbee_device.send_data(self.node, command)
