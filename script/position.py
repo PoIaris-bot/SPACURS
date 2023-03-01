@@ -3,6 +3,7 @@ import rospy
 import numpy as np
 from std_msgs.msg import Float32MultiArray
 from nlink_parser.msg import LinktrackNodeframe1
+from utils import remap
 
 
 class KalmanFilter:
@@ -48,7 +49,7 @@ class Position:
         self.x = None
         self.timestamp = rospy.get_time()
 
-        self.publisher = rospy.Publisher('/position', Float32MultiArray, queue_size=1)
+        self.publisher = rospy.Publisher('/pose', Float32MultiArray, queue_size=1)
         rospy.Subscriber('/nlink_linktrack_nodeframe1', LinktrackNodeframe1, self.callback, queue_size=1)
         rospy.spin()
 
@@ -82,7 +83,7 @@ class Position:
             else:
                 v_x = (x - self.x[0]) / dt
                 v_y = (y - self.x[1]) / dt
-                omega = (theta - self.x[2]) / dt
+                omega = remap(theta - self.x[2]) / dt
 
             self.publisher.publish(Float32MultiArray(data=[x, y, theta, v_x, v_y, omega]))
             self.x = [x, y, theta]

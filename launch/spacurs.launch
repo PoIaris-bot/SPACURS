@@ -10,5 +10,5 @@
         <param name="node_id" value="1"/>
     </node>
     <node pkg="spacurs" type="position.py" name="position"/>
-    <node pkg="spacurs" type="visualize.py" name="visualize"/>
+    <node pkg="spacurs" type="visualize.py" name="visualize" output="screen"/>
 </launch>

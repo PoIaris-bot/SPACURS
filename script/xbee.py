@@ -27,9 +27,9 @@ class XBee:
         except XBeeDeviceException:
             pass
         if self.node:
-            rospy.loginfo('xbee connected')
+            print('xbee connected')
         else:
-            rospy.loginfo('no xbee connected')
+            print('no xbee connected')
         rospy.Subscriber('/control', Int32MultiArray, self.callback, queue_size=1)
         rospy.spin()
 
