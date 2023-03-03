@@ -47,10 +47,10 @@ class USV:
         self.r2 = 2
 
         self.length = 0.7
-        self.Delta = 2 * self.length
+        self.Delta = 3 * self.length
 
-        # self.x_goal, self.y_goal = 30, 30
-        self.x_goal, self.y_goal = 10, 10
+        # self.x_goal, self.y_goal = 20, 25
+        self.x_goal, self.y_goal = 5, 10
         # self.x_goal, self.y_goal = map(eval, input('please enter a destination for usv: ').split())
 
         self.steer_controller = None
@@ -117,7 +117,7 @@ class USV:
                 self.path, (self.x_o, self.y_o), (self.num_arc_point, self.num_circle_point) = generate_path(x, y, theta, self.x_goal, self.y_goal, self.r1, self.r2)
                 self.target_idx = 1
 
-                self.steer_controller = PIDController(20, 0, 0)  # TODO
+                self.steer_controller = PIDController(100, 0, 10)  # TODO: best 80 0 10
 
                 self.path_publisher.publish(Path(
                     x=[self.target_idx, *self.path[0, :].tolist()],
@@ -166,12 +166,14 @@ class USV:
                     if self.is_line:
                         target = self.path[:, self.target_idx]
                         target_prev = self.path[:, self.target_idx - 1]
-
                         beta = np.arctan2(target[1] - target_prev[1], target[0] - target_prev[0])
                         alpha = remap(np.pi / 2 - beta)
-
                         error = np.sin(beta) * (x - target[0]) - np.cos(beta) * (y - target[1])
-                        phi_d = remap(alpha + np.arctan(-error / self.Delta))
+                        phi_d = remap(alpha + np.arctan(-error / self.Delta * 2))
+
+                        # target = self.path[:, self.target_idx]
+                        # phi_d = remap(np.pi / 2 - np.arctan2(target[1] - y, target[0] - x))
+
                         phi = remap(np.pi / 2 - theta)
                         phi_e = remap(phi_d - phi)
                     else:
@@ -188,7 +190,7 @@ class USV:
                         phi = remap(np.pi / 2 - theta)
                         phi_e = remap(phi_d - phi)
 
-                    steer_speed = constraint(self.steer_controller.output(phi_e), -60, 60)  # TODO
+                    steer_speed = constraint(self.steer_controller.output(phi_e), -60, 60)  # TODO: best -60 60
                     left_speed = int(constraint(base_speed + steer_speed, 0, 90))
                     right_speed = int(constraint(base_speed - steer_speed, 0, 90))
                     self.control_publisher.publish(Int32MultiArray(data=[1, left_speed, right_speed]))
