@@ -71,9 +71,8 @@ if __name__ == '__main__':
         try:
             path_message = path_queue.get(False)
             if path_message.x:
-                closest_idx = int(path_message.x[0])
-                target_idx = int(path_message.x[1])
-                path = [path_message.x[2:], path_message.y[2:]]
+                target_idx = int(path_message.x[0])
+                path = [path_message.x[1:], path_message.y[1:]]
             else:
                 path = None
         except queue.Empty:
@@ -90,9 +89,8 @@ if __name__ == '__main__':
         plt.plot(cache['x'], cache['y'], '.-g')
         if path is not None:
             plt.plot(path[0], path[1], '.:b')
-            plt.plot(path[0][closest_idx], path[1][closest_idx], '*c')
             plt.plot(path[0][target_idx], path[1][target_idx], '*r')
-            plt.legend(['usv', 'path', 'closest', 'target'])
+            plt.legend(['usv', 'path', 'target'])
         else:
             plt.legend(['usv'])
         plt.xlabel('x/m')

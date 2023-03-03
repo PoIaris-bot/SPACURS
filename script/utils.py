@@ -42,16 +42,19 @@ def generate_path(x, y, theta, x_goal, y_goal, r1=3, r2=2):
         if gamma2 > gamma1:
             gamma1 += 2 * np.pi
 
-    gammas = np.arange(gamma1, gamma2, np.pi / 20 if flag else -np.pi / 20)
+    gammas = np.arange(gamma1, gamma2, np.pi / 10 if flag else -np.pi / 10)
     arc = np.array([[x_o, y_o]]).T + r1 * np.array([np.cos(gammas), np.sin(gammas)])
-    length = np.sqrt((y_goal - y_c) ** 2 + (x_goal - x_c) ** 2)
-    line = np.array([np.linspace(x_c, x_goal, round(length / 0.5)), np.linspace(y_c, y_goal, round(length / 0.5))])
-    theta_end = remap(np.arctan2(y_goal - y_c, x_goal - x_c)) + np.pi / 6
-    thetas = np.arange(theta_end, theta_end + 2 * np.pi, np.pi / 15)
+    num_arc_point = arc.shape[1] + 1
+
+    line = np.array([[x_c, x_goal], [y_c, y_goal]])
+
+    theta_end = remap(np.arctan2(y_goal - y_c, x_goal - x_c))
+    thetas = np.arange(theta_end, theta_end + 2 * np.pi, np.pi / 6)
     circle = np.array([[x_goal, y_goal]]).T + r2 * np.array([np.cos(thetas), np.sin(thetas)])  # 20 points
+    num_circle_point = circle.shape[1]
+
     path = np.hstack([arc, line, circle])
-    idx = arc.shape[1] + line.shape[1]
-    return path, idx
+    return path, (x_o, y_o), (num_arc_point, num_circle_point)
 
 
 class PIDController:
