@@ -1,72 +1,60 @@
-import time
+#!/usr/bin/env python
+import rospy
+from std_msgs.msg import Int32MultiArray
 from digi.xbee.devices import XBeeDevice
 from digi.xbee.exception import XBeeDeviceException, TransmitException
+from utils import constraint
 
 
-class XBeeSender:
-    def __init__(self, port, baud_rate, remote_nodes):
-        self.port = port
-        self.baud_rate = baud_rate
-        self.remote_nodes = remote_nodes
+class XBee:
+    def __init__(self):
+        rospy.init_node('xbee', anonymous=True)
 
-        print('+--------------------------------+')
-        print('|  XBee Initialization started   |')
-        print('+--------------------------------+')
-        print('Please wait...')
-        self.device = XBeeDevice(self.port, self.baud_rate)  # 主板对象
-        self.end_devices = {}  # 连接上的子板
+        node_name = rospy.get_name()
+        port = rospy.get_param(node_name + '/port')
+        baud_rate = rospy.get_param(node_name + '/baud_rate')
+        node_id = str(rospy.get_param(node_name + '/node_id'))
+
+        self.xbee_device = XBeeDevice(port, baud_rate)
+        self.node = None
 
         try:
-            self.device.open()
-            self.xbee_network = self.device.get_network()
-            for remote_node in self.remote_nodes:
-                time.sleep(0.2)
-                try:
-                    end_device = self.xbee_network.discover_device(remote_node)  # 尝试连接子板
-                    if end_device:
-                        self.end_devices[remote_node] = end_device
-                except ValueError:
-                    pass
-            if self.end_devices:
-                print('End device', self.end_devices.keys(), 'are connected')
-            else:
-                print('No connected end device')
+            self.xbee_device.open()
+            xbee_network = self.xbee_device.get_network()
+            try:
+                self.node = xbee_network.discover_device(node_id)  # 尝试连接子板
+            except ValueError:
+                pass
         except XBeeDeviceException:
             pass
-        print('+--------------------------------+')
-        print('|  XBee Initialization finished  |')
-        print('+--------------------------------+')
-
-    def send_to_all(self, message):
-        if self.end_devices:
-            succeeded_nodes = []
-            failed_nodes = []
-            for remote_node in self.end_devices.keys():
-                try:
-                    if self.end_devices[remote_node]:
-                        self.device.send_data(self.end_devices[remote_node], message)
-                        succeeded_nodes.append(remote_node)
-                except TransmitException:
-                    failed_nodes.append(remote_node)
-                time.sleep(0.01)
-            if succeeded_nodes:
-                print('Succeeded in sending message', message, 'to end device', succeeded_nodes)
-            if failed_nodes:
-                print('Failed to send message', message, 'to end device', failed_nodes)
+        if self.node:
+            print('xbee connected')
         else:
-            print('No connected end device')
+            print('no xbee connected')
+        rospy.Subscriber('/control', Int32MultiArray, self.callback, queue_size=1)
+        rospy.spin()
 
-    def send_to_one(self, remote_node, message):
-        if remote_node in self.end_devices.keys():
-            try:
-                if self.end_devices[remote_node]:
-                    self.device.send_data(self.end_devices[remote_node], message)
-                    print('Succeeded in sending message', message, 'to end device', remote_node)
-            except TransmitException:
-                print('Failed to send message', message, 'to end device', remote_node)
-        else:
-            print('End device', remote_node, 'is not connected')
+    def callback(self, message):
+        mode, left_speed, right_speed = message.data
 
-    def __del__(self):
-        if self.device is not None and self.device.is_open():
-            self.device.close()
+        mode = str(int(mode))
+        left_speed = str(int(constraint(left_speed, 0, 200)))
+        right_speed = str(int(constraint(right_speed, 0, 200)))
+
+        if len(left_speed) < 3:
+            left_speed = '0' * (3 - len(left_speed)) + left_speed
+        if len(right_speed) < 3:
+            right_speed = '0' * (3 - len(right_speed)) + right_speed
+        command = 'cmd' + mode + left_speed + right_speed
+        try:
+            if self.node:
+                self.xbee_device.send_data(self.node, command)
+        except TransmitException:
+            pass
+
+
+if __name__ == '__main__':
+    try:
+        XBee()
+    except rospy.ROSInterruptException:
+        pass
