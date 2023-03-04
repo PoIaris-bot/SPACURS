@@ -46,10 +46,10 @@ def generate_path(x, y, theta, x_goal, y_goal, r1=3, r2=2):
     arc = np.array([[x_o, y_o]]).T + r1 * np.array([np.cos(gammas), np.sin(gammas)])
     num_arc_point = arc.shape[1] + 1
 
-    line = np.array([[x_c, x_goal], [y_c, y_goal]])
+    theta_line = remap(np.arctan2(y_goal - y_c, x_goal - x_c))
+    line = np.array([[x_c + 0.1 * np.cos(theta_line), x_goal], [y_c + 0.1 * np.sin(theta_line), y_goal]])
 
-    theta_end = remap(np.arctan2(y_goal - y_c, x_goal - x_c))
-    thetas = np.arange(theta_end, theta_end + 2 * np.pi, np.pi / 6)
+    thetas = np.arange(theta_line + np.pi / 4, theta_line + np.pi / 4 + 2 * np.pi, np.pi / 6)
     circle = np.array([[x_goal, y_goal]]).T + r2 * np.array([np.cos(thetas), np.sin(thetas)])  # 20 points
     num_circle_point = circle.shape[1]
 
@@ -67,6 +67,6 @@ class PIDController:
 
     def output(self, e):
         de = e - self.e
-        self.e_sum += e
+        self.e_sum = constraint(self.e_sum + e, -1, 1)
         self.e = e
         return self.kp * e + self.ki * self.e_sum + self.kd * de

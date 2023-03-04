@@ -3,6 +3,7 @@ import rospy
 from std_msgs.msg import Int32MultiArray
 from digi.xbee.devices import XBeeDevice
 from digi.xbee.exception import XBeeDeviceException, TransmitException
+from utils import constraint
 
 
 class XBee:
@@ -34,9 +35,16 @@ class XBee:
         rospy.spin()
 
     def callback(self, message):
-        mode, left_speed, right_speed = map(str, message.data)
-        left_speed = left_speed if len(left_speed) == 2 else '0' + left_speed
-        right_speed = right_speed if len(right_speed) == 2 else '0' + right_speed
+        mode, left_speed, right_speed = message.data
+
+        mode = str(int(mode))
+        left_speed = str(int(constraint(left_speed, 0, 200)))
+        right_speed = str(int(constraint(right_speed, 0, 200)))
+
+        if len(left_speed) < 3:
+            left_speed = '0' * (3 - len(left_speed)) + left_speed
+        if len(right_speed) < 3:
+            right_speed = '0' * (3 - len(right_speed)) + right_speed
         command = 'cmd' + mode + left_speed + right_speed
         try:
             if self.node:

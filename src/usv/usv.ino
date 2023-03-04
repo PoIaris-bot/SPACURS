@@ -15,7 +15,6 @@ int right_speed = 0;
 int left_dir = LEFT_FORWARD;
 int right_dir = RIGHT_FORWARD;
 
-String com_data;
 String command;
 
 void setup() {
@@ -36,19 +35,19 @@ void loop() {
   while (Serial.available() > 0) {
     char temp = char(Serial.read());
     if ((temp >= '0' && temp <= '9') || (temp >= 'a' && temp <= 'z')) {
-      com_data += temp;
+      command += temp;
     }
     delay(2);
   }
   Serial.flush();  // 串口发送数据结束后清缓存
 
-  if (com_data.length() > 0) {
-    int idx = com_data.indexOf("cmd");
+  if (command.length() > 0) {
+    int idx = command.indexOf("cmd");
     if (idx != -1) {
-      command = com_data.substring(idx + 3, idx + 8);
-      long data = atol(command.c_str());
+      int mode = atoi(command.substring(idx + 3, idx + 4).c_str());
+      left_speed = atoi(command.substring(idx + 4, idx + 7).c_str());
+      right_speed = atoi(command.substring(idx + 7, idx + 10).c_str());
 
-      int mode = data / 10000;
       left_dir = LEFT_FORWARD;
       right_dir = RIGHT_FORWARD;
       switch (mode) {
@@ -64,13 +63,7 @@ void loop() {
           left_dir = LEFT_BACKWARD;
           right_dir = RIGHT_BACKWARD;
       }
-
-      int speed = data % 10000;
-      left_speed = speed / 100;
-      right_speed = speed % 100;
     }
-
-    com_data = "";
     command = "";
   }
   analogWrite(left_motor_pin, left_speed);

@@ -30,6 +30,7 @@ class USV:
 
         button_mode_dict = {0: 'auto', 1: 'manual', 3: 'lock'}
         left_speed, right_speed = 0, 0
+        left_dir, right_dir = 0, 0
         self.control_rate = 10
         self.measure_rate = 50
         self.control_count = 0
@@ -50,7 +51,7 @@ class USV:
         self.Delta = 3 * self.length
 
         # self.x_goal, self.y_goal = 20, 25
-        self.x_goal, self.y_goal = 5, 10
+        self.x_goal, self.y_goal = 0, 10
         # self.x_goal, self.y_goal = map(eval, input('please enter a destination for usv: ').split())
 
         self.steer_controller = None
@@ -86,6 +87,10 @@ class USV:
                         mode_request = button_mode_dict[event.button]
                     if event.button == 4:  # Y
                         save_plot(True)
+                    if event.button == 6:  # LB
+                        left_dir = not left_dir
+                    if event.button == 7:  # RB
+                        right_dir = not right_dir
                     if event.button == 11:  # Menu
                         os.system('rosnode kill -a')
                         pid = os.popen('pgrep rosmaster').read().strip()
@@ -93,31 +98,34 @@ class USV:
 
                 if event.type == pygame.JOYAXISMOTION:
                     if event.axis == 5:  # LT: left motor speed
-                        left_speed = int((event.value + 1) * 45)
+                        left_speed = int((event.value + 1) * 100)
                     if event.axis == 4:  # RT: right motor speed
-                        right_speed = int((event.value + 1) * 45)
+                        right_speed = int((event.value + 1) * 100)
+
 
             if mode_request is not None:
                 self.mode = mode_request
                 print(f'switch to {mode_request} mode')
+                left_dir, right_dir = 0, 0
                 mode_request = None
 
             if rospy.get_time() - last_publish > 1 / self.control_rate:
                 if self.mode == 'lock':
                     self.control_publisher.publish(Int32MultiArray(data=[1, 0, 0]))
                 elif self.mode == 'manual':
-                    self.control_publisher.publish(Int32MultiArray(data=[1, left_speed, right_speed]))
+                    speed_mode = left_dir << 1 | right_dir + 1
+                    self.control_publisher.publish(Int32MultiArray(data=[speed_mode, left_speed, right_speed]))
                 last_publish = rospy.get_time()
 
     def callback(self, message):
         if self.mode == 'auto':
-            x, y, theta = message.data
+            x, y, theta = message.data[:3]
             if self.path is None:
                 # generate path
                 self.path, (self.x_o, self.y_o), (self.num_arc_point, self.num_circle_point) = generate_path(x, y, theta, self.x_goal, self.y_goal, self.r1, self.r2)
                 self.target_idx = 1
 
-                self.steer_controller = PIDController(100, 0, 10)  # TODO: best 80 0 10
+                self.steer_controller = PIDController(80, 10, 550)  # TODO: best 80 10 500
 
                 self.path_publisher.publish(Path(
                     x=[self.target_idx, *self.path[0, :].tolist()],
@@ -169,7 +177,7 @@ class USV:
                         beta = np.arctan2(target[1] - target_prev[1], target[0] - target_prev[0])
                         alpha = remap(np.pi / 2 - beta)
                         error = np.sin(beta) * (x - target[0]) - np.cos(beta) * (y - target[1])
-                        phi_d = remap(alpha + np.arctan(-error / self.Delta * 2))
+                        phi_d = remap(alpha + np.arctan(-error / self.Delta))
 
                         # target = self.path[:, self.target_idx]
                         # phi_d = remap(np.pi / 2 - np.arctan2(target[1] - y, target[0] - x))
