@@ -50,7 +50,7 @@ class USV:
         self.length = 0.7
         self.Delta = 3 * self.length
 
-        # self.x_goal, self.y_goal = 20, 25
+        # self.x_goal, self.y_goal = 35, 30
         self.x_goal, self.y_goal = 0, 10
         # self.x_goal, self.y_goal = map(eval, input('please enter a destination for usv: ').split())
 
@@ -98,9 +98,9 @@ class USV:
 
                 if event.type == pygame.JOYAXISMOTION:
                     if event.axis == 5:  # LT: left motor speed
-                        left_speed = int((event.value + 1) * 100)
+                        left_speed = int((event.value + 1) * 45)
                     if event.axis == 4:  # RT: right motor speed
-                        right_speed = int((event.value + 1) * 100)
+                        right_speed = int((event.value + 1) * 45)
 
 
             if mode_request is not None:
@@ -125,7 +125,7 @@ class USV:
                 self.path, (self.x_o, self.y_o), (self.num_arc_point, self.num_circle_point) = generate_path(x, y, theta, self.x_goal, self.y_goal, self.r1, self.r2)
                 self.target_idx = 1
 
-                self.steer_controller = PIDController(80, 10, 550)  # TODO: best 80 10 500
+                self.steer_controller = PIDController(80, 10, 500)  # TODO: best 80 10 500
 
                 self.path_publisher.publish(Path(
                     x=[self.target_idx, *self.path[0, :].tolist()],
@@ -177,7 +177,7 @@ class USV:
                         beta = np.arctan2(target[1] - target_prev[1], target[0] - target_prev[0])
                         alpha = remap(np.pi / 2 - beta)
                         error = np.sin(beta) * (x - target[0]) - np.cos(beta) * (y - target[1])
-                        phi_d = remap(alpha + np.arctan(-error / self.Delta))
+                        phi_d = remap(alpha + np.arctan(-error / (2 * self.Delta)))
 
                         # target = self.path[:, self.target_idx]
                         # phi_d = remap(np.pi / 2 - np.arctan2(target[1] - y, target[0] - x))

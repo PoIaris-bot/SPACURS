@@ -49,8 +49,8 @@ def generate_path(x, y, theta, x_goal, y_goal, r1=3, r2=2):
     theta_line = remap(np.arctan2(y_goal - y_c, x_goal - x_c))
     line = np.array([[x_c + 0.1 * np.cos(theta_line), x_goal], [y_c + 0.1 * np.sin(theta_line), y_goal]])
 
-    thetas = np.arange(theta_line + np.pi / 4, theta_line + np.pi / 4 + 2 * np.pi, np.pi / 6)
-    circle = np.array([[x_goal, y_goal]]).T + r2 * np.array([np.cos(thetas), np.sin(thetas)])  # 20 points
+    thetas = np.arange(theta_line + np.pi / 6, theta_line + np.pi / 6 + 2 * np.pi, np.pi / 10)
+    circle = np.array([[x_goal, y_goal]]).T + r2 * np.array([np.cos(thetas), np.sin(thetas)])
     num_circle_point = circle.shape[1]
 
     path = np.hstack([arc, line, circle])
