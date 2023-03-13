@@ -43,16 +43,13 @@ class USV:
 
         self.target_idx = None
         self.is_line = False
+        self.flag = False
 
         self.r1 = 3
         self.r2 = 2
 
         self.length = 0.7
         self.Delta = 3 * self.length
-
-        # self.x_goal, self.y_goal = 35, 30
-        self.x_goal, self.y_goal = 0, 10
-        # self.x_goal, self.y_goal = map(eval, input('please enter a destination for usv: ').split())
 
         self.steer_controller = None
 
@@ -102,7 +99,6 @@ class USV:
                     if event.axis == 4:  # RT: right motor speed
                         right_speed = int((event.value + 1) * 45)
 
-
             if mode_request is not None:
                 self.mode = mode_request
                 print(f'switch to {mode_request} mode')
@@ -119,13 +115,18 @@ class USV:
 
     def callback(self, message):
         if self.mode == 'auto':
+            # x_goal, y_goal = 35, 30
+            x_goal, y_goal = 0, 10
+            # x_goal, y_goal = map(eval, input('please enter a destination for usv: ').split())
+
             x, y, theta = message.data[:3]
             if self.path is None:
                 # generate path
-                self.path, (self.x_o, self.y_o), (self.num_arc_point, self.num_circle_point) = generate_path(x, y, theta, self.x_goal, self.y_goal, self.r1, self.r2)
+                self.path, self.num_arc_point, self.num_circle_point = generate_path(x, y, theta, x_goal, y_goal, self.r1, self.r2)
                 self.target_idx = 1
 
                 self.steer_controller = PIDController(80, 10, 500)  # TODO: best 80 10 500
+                self.flag = False
 
                 self.path_publisher.publish(Path(
                     x=[self.target_idx, *self.path[0, :].tolist()],
@@ -143,14 +144,15 @@ class USV:
                         self.target_idx = self.num_arc_point
                         base_speed = 90  # TODO
                         self.is_line = True
-                elif self.target_idx == self.num_arc_point:
+                elif self.target_idx == self.num_arc_point and not self.flag:
                     base_speed = 90  # TODO
                     self.is_line = True
 
-                    if np.linalg.norm(np.array([[x, y]]).T - np.array([[self.x_goal, self.y_goal]]).T, axis=0) < self.r2 / 2:
+                    if np.linalg.norm(np.array([[x, y]]).T - self.path[:, self.num_arc_point], axis=0) < self.r2 / 2:
                         self.target_idx += 1
                         base_speed = constraint(25 * self.r2, 0, 90)  # TODO
                         self.is_line = False
+                        self.flag = True
                 else:
                     num_segment_point = self.num_circle_point // 6
                     if self.target_idx + num_segment_point > self.num_arc_point + self.num_circle_point:
@@ -178,9 +180,6 @@ class USV:
                         alpha = remap(np.pi / 2 - beta)
                         error = np.sin(beta) * (x - target[0]) - np.cos(beta) * (y - target[1])
                         phi_d = remap(alpha + np.arctan(-error / (2 * self.Delta)))
-
-                        # target = self.path[:, self.target_idx]
-                        # phi_d = remap(np.pi / 2 - np.arctan2(target[1] - y, target[0] - x))
 
                         phi = remap(np.pi / 2 - theta)
                         phi_e = remap(phi_d - phi)

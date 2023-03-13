@@ -34,22 +34,22 @@ def handler(request):
     return SetBoolResponse(success=False)
 
 
-def path_callback(path):
+def path_callback(path_msg):
     global path_queue
     try:
         _ = path_queue.get(False)
     except queue.Empty:
         pass
-    path_queue.put(path)
+    path_queue.put(path_msg)
 
 
-def pose_callback(pose):
+def pose_callback(pose_msg):
     global pose_queue
     try:
         _ = pose_queue.get(False)
     except queue.Empty:
         pass
-    pose_queue.put(pose)
+    pose_queue.put(pose_msg)
 
 
 if __name__ == '__main__':
