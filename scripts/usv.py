@@ -148,7 +148,7 @@ class USV:
                     base_speed = 90  # TODO
                     self.is_line = True
 
-                    if np.linalg.norm(np.array([[x, y]]).T - self.path[:, self.num_arc_point], axis=0) < self.r2 / 2:
+                    if np.linalg.norm(np.array([[x, y]]).T - self.path[:, self.num_arc_point].reshape(2, 1), axis=0) < self.r2 / 2:
                         self.target_idx += 1
                         base_speed = constraint(25 * self.r2, 0, 90)  # TODO
                         self.is_line = False
