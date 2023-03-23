@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="spacurs" type="ground_console.py" name="ground_console" output="screen"/>
+    <node pkg="spacurs" type="usv_visualizer.py" name="usv_visualizer" output="screen"/>
+</launch>
