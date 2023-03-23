@@ -1,6 +1,4 @@
 <launch>
     <node pkg="spacurs" type="ground_console.py" name="ground_console" output="screen"/>
     <node pkg="spacurs" type="usv_visualizer.py" name="usv_visualizer" output="screen"/>
-    <node pkg="spacurs" type="usv_recognizer.py" name="usv_recognizer"/>
-    <node pkg="spacurs" type="usv_autopilot.py" name="usv_autopilot"/>
 </launch>

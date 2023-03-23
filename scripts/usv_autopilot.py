@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import sys
 import rospy
 import numpy as np
 from spacurs.msg import Path
@@ -7,7 +8,7 @@ from std_msgs.msg import Int32MultiArray, Float32MultiArray
 from tools import remap_angle, constraint, PIDController
 
 
-def generate_path(x, y, theta, x_goal, y_goal, r1=3, r2=2):
+def usv_navigator(x, y, theta, x_goal, y_goal, r1=3, r2=2):
     theta_goal = remap_angle(np.arctan2(y_goal - y, x_goal - x))
     flag = remap_angle(theta - theta_goal) < 0
 
@@ -33,7 +34,11 @@ def generate_path(x, y, theta, x_goal, y_goal, r1=3, r2=2):
     gammas = np.linspace(gamma1, gamma2, round(abs(gamma1 - gamma2) * r1), endpoint=False)
     arc = np.array([[xo, yo]]).T + r1 * np.array([np.cos(gammas), np.sin(gammas)])
 
-    line = np.linspace([x1, y1], [x2, y2], round(np.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2)), endpoint=False).T
+    num_line_point = round(np.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2))
+    line = np.array([
+        np.linspace(x1, x2, num_line_point, endpoint=False),
+        np.linspace(y1, y2, num_line_point, endpoint=False)
+    ]).reshape(2, -1)
 
     thetas = np.linspace(gamma2, gamma2 + np.pi * (2 if flag else -2), round(2 * np.pi * r2), endpoint=False)
     circle = np.array([[x_goal, y_goal]]).T + r2 * np.array([np.cos(thetas), np.sin(thetas)])
@@ -53,13 +58,14 @@ class USVAutopilot:
         self.measure_rate = 50
         self.control_count = 0
 
+        self.goal = None
         self.path = None
         self.circle_idx = None
         self.target_idx = None
         self.segment = 5
 
         self.length = 0.7
-        self.Delta = 3 * self.length
+        self.Delta = 3 * self.length  # TODO: best 3
 
         self.speed_controller = None
         self.steer_controller = None
@@ -88,13 +94,18 @@ class USVAutopilot:
 
             if self.path is None:
                 # generate path
-                x_goal, y_goal = 20, 25
-                # x_goal, y_goal = 0, 10
-                self.path, self.circle_idx = generate_path(x, y, theta, x_goal, y_goal)
-                self.target_idx = 1
+                if self.goal is None:
+                    if sys.version[0] == '2':
+                        self.goal = list(map(eval, raw_input('goal: ').split()))
+                    else:
+                        self.goal = list(map(eval, input('goal: ').split()))
+                    return
+                else:
+                    self.path, self.circle_idx = usv_navigator(x, y, theta, *self.goal)
+                    self.target_idx = 1
 
-                self.speed_controller = PIDController(20, 10, 200)  # TODO
-                self.steer_controller = PIDController(30, 10, 200)  # TODO
+                    self.speed_controller = PIDController(20, 10, 100)  # TODO: best 20 10 100
+                    self.steer_controller = PIDController(70, 10, 500)  # TODO: best 70 10 500
 
             else:
                 # calculate target point
@@ -127,21 +138,21 @@ class USVAutopilot:
 
                     x_e = x_d - x
                     y_e = y_d - y
-                    u1 = 2 * np.tanh(1 * x_e)
-                    u2 = 2 * np.tanh(1 * y_e)
+                    u1 = 1.0 * np.tanh(3 * x_e)  # TODO: best 1 3
+                    u2 = 1.0 * np.tanh(3 * y_e)  # TODO: best 1 3
                     v_d = np.sqrt(u1 ** 2 + u2 ** 2)
                     v_e = v_d - v
 
                     theta_d = remap_angle(np.pi / 2 - np.arctan2(y_d - y, x_d - x))
                     theta = remap_angle(np.pi / 2 - theta)
                     theta_e = remap_angle(theta_d - theta)
-                    omega_d = 2 * theta_e + 0.1 * np.sign(theta_e)
+                    omega_d = -(3 * theta_e + 0.1 * np.sign(theta_e))  # TODO: best 3 0.1
                     omega_e = omega_d - omega
 
-                    base_speed = constraint(45 + self.speed_controller.output(v_e), 0, 90)  # TODO
-                    steer_speed = constraint(self.steer_controller.output(omega_e), -60, 60)  # TODO
-                    left_speed = int(constraint(base_speed + steer_speed, 0, 90))
-                    right_speed = int(constraint(base_speed - steer_speed, 0, 90))
+                    base_speed = constraint(45 + self.speed_controller.output(v_e), 0, 90)  # TODO: best 0 90
+                    steer_speed = constraint(self.steer_controller.output(omega_e), -50, 50)  # TODO: best -50 50
+                    left_speed = int(constraint(base_speed - steer_speed, 0, 90))
+                    right_speed = int(constraint(base_speed + steer_speed, 0, 90))
                     self.control_publisher.publish(Int32MultiArray(data=[left_speed, right_speed]))
 
             self.path_publisher.publish(Path(
@@ -149,6 +160,7 @@ class USVAutopilot:
                 y=[self.target_idx] + self.path[1, :].tolist()
             ))
         else:
+            self.goal = None
             self.path = None
             self.control_count += 1
             if self.control_count > self.measure_rate / self.control_rate:

@@ -35,6 +35,10 @@ def console():
     rospy.wait_for_service('switch_mode')
     switch_mode = rospy.ServiceProxy('switch_mode', SetBool)
 
+    rospy.wait_for_service('open_plot')
+    open_plot = rospy.ServiceProxy('open_plot', SetBool)
+    open_plot_flag = False
+
     last_connect_request = rospy.get_time()
     last_control_publish = rospy.get_time()
 
@@ -61,8 +65,18 @@ def console():
                     switch_mode(True if mode == 'auto' else False)
                     print(f'switch to {mode} mode')
                     left_output, right_output = 0, 0
+
+                    if mode == 'auto':
+                        open_plot_flag = False
+                        open_plot(open_plot_flag)
+
                 if event.button == 4:  # Y: save plot
                     save_plot(True)
+
+                if event.button == 10:  # View: open plot
+                    open_plot_flag = not open_plot_flag
+                    open_plot(open_plot_flag)
+
                 if event.button == 11:  # Menu: shutdown
                     os.system('rosnode kill -a')
                     pid = os.popen('pgrep rosmaster').read().strip()
@@ -71,6 +85,7 @@ def console():
             if event.type == pygame.JOYAXISMOTION:
                 if event.axis == 5:  # LT: left motor
                     left_output = int((event.value + 1) * 45)
+
                 if event.axis == 4:  # RT: right motor
                     right_output = int((event.value + 1) * 45)
 

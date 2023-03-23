@@ -13,4 +13,5 @@
         <param name="baud_rate" value="115200"/>
     </node>
     <node pkg="spacurs" type="usv_pose_estimator.py" name="usv_pose_estimator"/>
+    <node pkg="spacurs" type="usv_autopilot.py" name="usv_autopilot" output="screen"/>
 </launch>
