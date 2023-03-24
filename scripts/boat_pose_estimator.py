@@ -6,9 +6,9 @@ from std_msgs.msg import Float32MultiArray
 from nlink_parser.msg import LinktrackTagframe0, LinktrackNodeframe2
 
 
-class PoseEstimator:
+class BoatPoseEstimator:
     def __init__(self):
-        rospy.init_node('pose_estimator', anonymous=True)
+        rospy.init_node('boat_pose_estimator', anonymous=True)
 
         self.head = None
         self.updated_head = False
@@ -16,7 +16,7 @@ class PoseEstimator:
         self.rear = None
         self.updated_rear = False
 
-        self.usv = None
+        self.boat = None
 
         self.publisher = rospy.Publisher('/pose', Float32MultiArray, queue_size=1)
         rospy.Subscriber('/nlink_linktrack_tagframe0', LinktrackTagframe0, self.callback, queue_size=1)
@@ -31,8 +31,8 @@ class PoseEstimator:
                 omega = (self.head.x[4, 0] + self.rear.x[4, 0]) / 2
                 theta = np.arctan2(self.head.x[1, 0] - self.rear.x[1, 0], self.head.x[0, 0] - self.rear.x[0, 0])
 
-                if self.usv is None:
-                    self.usv = KalmanFilter(
+                if self.boat is None:
+                    self.boat = KalmanFilter(
                         np.array([[x, y, theta, v_x, v_y, omega]]).T,
                         np.array([
                             [0, 0, 0, 1, 0, 0],
@@ -44,9 +44,9 @@ class PoseEstimator:
                         ])
                     )
                 else:
-                    self.usv.predict()
-                    self.usv.update(np.array([[x, y, theta, v_x, v_y, omega]]).T)
-                    self.usv.x[2, 0] = remap_angle(self.usv.x[2, 0])
+                    self.boat.predict()
+                    self.boat.update(np.array([[x, y, theta, v_x, v_y, omega]]).T)
+                    self.boat.x[2, 0] = remap_angle(self.boat.x[2, 0])
 
                 self.publisher.publish(Float32MultiArray(data=[x, y, theta, v_x, v_y, omega]))
                 self.updated_head = False
@@ -84,6 +84,6 @@ class PoseEstimator:
 
 if __name__ == '__main__':
     try:
-        PoseEstimator()
+        BoatPoseEstimator()
     except rospy.ROSInterruptException:
         pass

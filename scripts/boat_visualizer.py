@@ -15,7 +15,7 @@ if not os.path.exists(DIRECTORY):
     os.makedirs(DIRECTORY)
 
 
-class USVVisualizer:
+class BoatVisualizer:
     def __init__(self):
         cache = {'x': [], 'y': []}
         path = None
@@ -27,7 +27,7 @@ class USVVisualizer:
         self.save_plot = False
         self.open_plot = False
 
-        rospy.init_node('visualizer', anonymous=True)
+        rospy.init_node('boat_visualizer', anonymous=True)
         rospy.Subscriber('/path', Path, self.path_callback, queue_size=1)
         rospy.Subscriber('/pose', Float32MultiArray, self.pose_callback, queue_size=1)
         rospy.Service('save_plot', SetBool, self.save_plot_handler)
@@ -55,9 +55,9 @@ class USVVisualizer:
                 plt.plot(cache['x'], cache['y'], '.-g')
                 if path is not None:
                     plt.plot(path[0], path[1], '.:b')
-                    plt.legend(['usv', 'path'])
+                    plt.legend(['boat', 'path'])
                 else:
-                    plt.legend(['usv'])
+                    plt.legend(['boat'])
                 plt.xlabel('x/m')
                 plt.ylabel('y/m')
                 plt.axis('square')
@@ -100,6 +100,6 @@ class USVVisualizer:
 
 if __name__ == '__main__':
     try:
-        USVVisualizer()
+        BoatVisualizer()
     except rospy.ROSInterruptException:
         pass

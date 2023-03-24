@@ -8,10 +8,10 @@
         <param name="baud_rate" value="921600"/>
     </node>
 
-    <node pkg="spacurs" type="usv_commander.py" name="usv_commander">
+    <node pkg="spacurs" type="boat_commander.py" name="boat_commander">
         <param name="port" value="/dev/ttyACM0"/>
         <param name="baud_rate" value="115200"/>
     </node>
-    <node pkg="spacurs" type="usv_pose_estimator.py" name="usv_pose_estimator"/>
-    <node pkg="spacurs" type="usv_autopilot.py" name="usv_autopilot" output="screen"/>
+    <node pkg="spacurs" type="boat_pose_estimator.py" name="boat_pose_estimator"/>
+    <node pkg="spacurs" type="boat_autopilot.py" name="boat_autopilot" output="screen"/>
 </launch>

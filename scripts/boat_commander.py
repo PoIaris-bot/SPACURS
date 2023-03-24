@@ -5,9 +5,9 @@ from tools import constraint
 from std_msgs.msg import Int32MultiArray
 
 
-class Commander:
+class BoatCommander:
     def __init__(self):
-        rospy.init_node('commander', anonymous=True)
+        rospy.init_node('boat_commander', anonymous=True)
 
         ros_node_name = rospy.get_name()
         port = rospy.get_param(ros_node_name + '/port')
@@ -37,6 +37,6 @@ class Commander:
 
 if __name__ == '__main__':
     try:
-        Commander()
+        BoatCommander()
     except rospy.ROSInterruptException:
         pass

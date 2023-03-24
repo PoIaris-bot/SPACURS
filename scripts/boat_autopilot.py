@@ -8,7 +8,7 @@ from std_msgs.msg import Int32MultiArray, Float32MultiArray
 from tools import remap_angle, constraint, PIDController
 
 
-def usv_navigator(x, y, theta, x_goal, y_goal, r1=3, r2=2):
+def boat_navigator(x, y, theta, x_goal, y_goal, r1=3, r2=2):
     theta_goal = remap_angle(np.arctan2(y_goal - y, x_goal - x))
     flag = remap_angle(theta - theta_goal) < 0
 
@@ -48,9 +48,9 @@ def usv_navigator(x, y, theta, x_goal, y_goal, r1=3, r2=2):
     return path, circle_idx
 
 
-class USVAutopilot:
+class BoatAutopilot:
     def __init__(self):
-        rospy.init_node('usv_autopilot', anonymous=True)
+        rospy.init_node('boat_autopilot', anonymous=True)
 
         self.auto = False
 
@@ -101,7 +101,7 @@ class USVAutopilot:
                         self.goal = list(map(eval, input('goal: ').split()))
                     return
                 else:
-                    self.path, self.circle_idx = usv_navigator(x, y, theta, *self.goal)
+                    self.path, self.circle_idx = boat_navigator(x, y, theta, *self.goal)
                     self.closest_idx = 0
 
                     self.speed_controller = PIDController(20, 10, 100)  # best 20 10 100
@@ -170,6 +170,6 @@ class USVAutopilot:
 
 if __name__ == '__main__':
     try:
-        USVAutopilot()
+        BoatAutopilot()
     except rospy.ROSInterruptException:
         pass
