@@ -19,7 +19,6 @@ class USVVisualizer:
     def __init__(self):
         cache = {'x': [], 'y': []}
         path = None
-        target_idx = None
 
         self.path_message = None
         self.updated_path = False
@@ -39,8 +38,7 @@ class USVVisualizer:
             if self.open_plot:
                 if self.updated_path:
                     if self.path_message.x:
-                        target_idx = int(self.path_message.x[0])
-                        path = [self.path_message.x[1:], self.path_message.y[1:]]
+                        path = [self.path_message.x, self.path_message.y]
                     else:
                         path = None
                     self.updated_path = False
@@ -57,8 +55,7 @@ class USVVisualizer:
                 plt.plot(cache['x'], cache['y'], '.-g')
                 if path is not None:
                     plt.plot(path[0], path[1], '.:b')
-                    plt.plot(path[0][target_idx], path[1][target_idx], '*r')
-                    plt.legend(['usv', 'path', 'target'])
+                    plt.legend(['usv', 'path'])
                 else:
                     plt.legend(['usv'])
                 plt.xlabel('x/m')
