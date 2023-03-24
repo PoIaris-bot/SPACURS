@@ -6,7 +6,7 @@ from std_srvs.srv import SetBool
 from std_msgs.msg import Int32MultiArray
 
 
-def console():
+def ground_console():
     rospy.init_node('console', anonymous=True)
 
     pygame.init()
@@ -99,6 +99,6 @@ def console():
 
 if __name__ == '__main__':
     try:
-        console()
+        ground_console()
     except rospy.ROSInterruptException:
         pass
