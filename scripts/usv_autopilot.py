@@ -61,11 +61,11 @@ class USVAutopilot:
         self.goal = None
         self.path = None
         self.circle_idx = None
-        self.target_idx = None
+        self.closest_idx = None
         self.segment = 5
 
         self.length = 0.7
-        self.Delta = 3 * self.length  # TODO: best 3
+        self.Delta = 3 * self.length  # best 3
 
         self.speed_controller = None
         self.steer_controller = None
@@ -102,62 +102,62 @@ class USVAutopilot:
                     return
                 else:
                     self.path, self.circle_idx = usv_navigator(x, y, theta, *self.goal)
-                    self.target_idx = 1
+                    self.closest_idx = 0
 
-                    self.speed_controller = PIDController(20, 10, 100)  # TODO: best 20 10 100
-                    self.steer_controller = PIDController(70, 10, 500)  # TODO: best 70 10 500
+                    self.speed_controller = PIDController(20, 10, 100)  # best 20 10 100
+                    self.steer_controller = PIDController(70, 10, 500)  # best 70 10 500
 
             else:
                 # calculate target point
                 end_idx = self.path.shape[1] - 1
-                if self.target_idx + self.segment > end_idx + 1:
+                if self.closest_idx + self.segment > end_idx + 1:
                     path_segment = np.hstack([
-                        self.path[:, self.target_idx:end_idx + 1],
-                        self.path[:, self.circle_idx:self.circle_idx + self.target_idx + self.segment - end_idx - 1]
+                        self.path[:, self.closest_idx:end_idx + 1],
+                        self.path[:, self.circle_idx:self.circle_idx + self.closest_idx + self.segment - end_idx - 1]
                     ])
                 else:
-                    path_segment = self.path[:, self.target_idx:self.target_idx + self.segment]
+                    path_segment = self.path[:, self.closest_idx:self.closest_idx + self.segment]
                 distance = np.linalg.norm(np.array([[x, y]]).T - path_segment, axis=0)
-                self.target_idx += np.argmin(distance)
-                if self.target_idx > end_idx:
-                    self.target_idx = self.circle_idx + self.target_idx - end_idx - 1
+                self.closest_idx += np.argmin(distance)
+                if self.closest_idx > end_idx:
+                    self.closest_idx = self.circle_idx + self.closest_idx - end_idx - 1
 
                 self.control_count += 1
                 if self.control_count > self.measure_rate / self.control_rate:
                     self.control_count = 0
 
-                    target = self.path[:, self.target_idx]
-                    if self.target_idx == end_idx:
-                        target_next = self.path[:, self.circle_idx]
+                    x_closest, y_closest = self.path[:, self.closest_idx]
+                    if self.closest_idx == end_idx:
+                        x_target, y_target = self.path[:, self.circle_idx]
                     else:
-                        target_next = self.path[:, self.target_idx + 1]
+                        x_target, y_target = self.path[:, self.closest_idx + 1]
 
-                    alpha = np.arctan2(target_next[1] - target[1], target_next[0] - target[0])
-                    x_d = target[0] + self.Delta * np.cos(alpha)
-                    y_d = target[1] + self.Delta * np.sin(alpha)
+                    alpha = np.arctan2(y_target - y_closest, x_target - x_closest)
+                    x_d = x_closest + self.Delta * np.cos(alpha)
+                    y_d = y_closest + self.Delta * np.sin(alpha)
 
                     x_e = x_d - x
                     y_e = y_d - y
-                    u1 = 1.0 * np.tanh(3 * x_e)  # TODO: best 1 3
-                    u2 = 1.0 * np.tanh(3 * y_e)  # TODO: best 1 3
+                    u1 = 1.0 * np.tanh(3.0 * x_e)  # best 1.0 3.0
+                    u2 = 1.0 * np.tanh(3.0 * y_e)  # best 1.0 3.0
                     v_d = np.sqrt(u1 ** 2 + u2 ** 2)
                     v_e = v_d - v
 
                     theta_d = remap_angle(np.pi / 2 - np.arctan2(y_d - y, x_d - x))
                     theta = remap_angle(np.pi / 2 - theta)
                     theta_e = remap_angle(theta_d - theta)
-                    omega_d = -(3 * theta_e + 0.1 * np.sign(theta_e))  # TODO: best 3 0.1
+                    omega_d = -(3.0 * theta_e + 0.1 * np.sign(theta_e))  # best 3.0 0.1
                     omega_e = omega_d - omega
 
-                    base_speed = constraint(45 + self.speed_controller.output(v_e), 0, 90)  # TODO: best 0 90
-                    steer_speed = constraint(self.steer_controller.output(omega_e), -50, 50)  # TODO: best -50 50
+                    base_speed = constraint(45 + self.speed_controller.output(v_e), 0, 90)  # best 0 90
+                    steer_speed = constraint(self.steer_controller.output(omega_e), -50, 50)  # best -50 50
                     left_speed = int(constraint(base_speed - steer_speed, 0, 90))
                     right_speed = int(constraint(base_speed + steer_speed, 0, 90))
                     self.control_publisher.publish(Int32MultiArray(data=[left_speed, right_speed]))
 
             self.path_publisher.publish(Path(
-                x=[self.target_idx] + self.path[0, :].tolist(),
-                y=[self.target_idx] + self.path[1, :].tolist()
+                x=self.path[0, :].tolist(),
+                y=self.path[1, :].tolist()
             ))
         else:
             self.goal = None
