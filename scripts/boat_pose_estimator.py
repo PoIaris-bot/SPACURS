@@ -8,7 +8,7 @@ from nlink_parser.msg import LinktrackTagframe0, LinktrackNodeframe2
 
 class BoatPoseEstimator:
     def __init__(self):
-        rospy.init_node('boat_pose_estimator', anonymous=True)
+        rospy.init_node("boat_pose_estimator""", anonymous=True)
 
         self.head = None
         self.updated_head = False
@@ -18,9 +18,9 @@ class BoatPoseEstimator:
 
         self.boat = None
 
-        self.publisher = rospy.Publisher('/pose', Float32MultiArray, queue_size=1)
-        rospy.Subscriber('/nlink_linktrack_tagframe0', LinktrackTagframe0, self.callback, queue_size=1)
-        rospy.Subscriber('/nlink_linktrack_nodeframe2', LinktrackNodeframe2, self.callback, queue_size=1)
+        self.publisher = rospy.Publisher("/pose", Float32MultiArray, queue_size=1)
+        rospy.Subscriber("/nlink_linktrack_tagframe0", LinktrackTagframe0, self.callback, queue_size=1)
+        rospy.Subscriber("/nlink_linktrack_nodeframe2", LinktrackNodeframe2, self.callback, queue_size=1)
 
         while not rospy.is_shutdown():
             if self.updated_head and self.updated_rear:
@@ -82,7 +82,7 @@ class BoatPoseEstimator:
             self.updated_rear = True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         BoatPoseEstimator()
     except rospy.ROSInterruptException:

@@ -10,7 +10,7 @@ from std_srvs.srv import SetBool, SetBoolResponse
 
 FILE = pathlib.Path(__file__).resolve()
 ROOT = FILE.parents[1]
-DIRECTORY = os.path.join(ROOT, 'result')
+DIRECTORY = os.path.join(ROOT, "result")
 if not os.path.exists(DIRECTORY):
     os.makedirs(DIRECTORY)
 
@@ -27,11 +27,11 @@ class BoatVisualizer:
         self.save_plot = False
         self.open_plot = False
 
-        rospy.init_node('boat_visualizer', anonymous=True)
-        rospy.Subscriber('/path', Path, self.path_callback, queue_size=1)
-        rospy.Subscriber('/pose', Float32MultiArray, self.pose_callback, queue_size=1)
-        rospy.Service('save_plot', SetBool, self.save_plot_handler)
-        rospy.Service('open_plot', SetBool, self.open_plot_handler)
+        rospy.init_node("boat_visualizer", anonymous=True)
+        rospy.Subscriber("/path", Path, self.path_callback, queue_size=1)
+        rospy.Subscriber("/pose", Float32MultiArray, self.pose_callback, queue_size=1)
+        rospy.Service("save_plot", SetBool, self.save_plot_handler)
+        rospy.Service("open_plot", SetBool, self.open_plot_handler)
 
         plt.ion()
         while not rospy.is_shutdown():
@@ -52,19 +52,19 @@ class BoatVisualizer:
                     self.updated_pose = False
 
                 plt.clf()
-                plt.plot(cache['x'], cache['y'], '.-g')
+                plt.plot(cache['x'], cache['y'], ".-g")
                 if path is not None:
-                    plt.plot(path[0], path[1], '.:b')
-                    plt.legend(['boat', 'path'])
+                    plt.plot(path[0], path[1], ".:b")
+                    plt.legend(["boat", "path"])
                 else:
-                    plt.legend(['boat'])
-                plt.xlabel('x/m')
-                plt.ylabel('y/m')
-                plt.axis('square')
+                    plt.legend(["boat"])
+                plt.xlabel("x/m")
+                plt.ylabel("y/m")
+                plt.axis("square")
                 plt.grid(True)
 
                 if self.save_plot:
-                    filepath = f'{DIRECTORY}/{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}.png'
+                    filepath = f"{DIRECTORY}/{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}.png"
                     plt.savefig(filepath)
                     print(f"plot {'' if os.path.exists(filepath) else 'not '}saved")
                     self.save_plot = False
@@ -98,7 +98,7 @@ class BoatVisualizer:
         self.updated_pose = True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         BoatVisualizer()
     except rospy.ROSInterruptException:

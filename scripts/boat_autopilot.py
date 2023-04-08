@@ -50,7 +50,7 @@ def boat_navigator(x, y, theta, x_goal, y_goal, r1=3, r2=2):
 
 class BoatAutopilot:
     def __init__(self):
-        rospy.init_node('boat_autopilot', anonymous=True)
+        rospy.init_node("boat_autopilot", anonymous=True)
 
         self.auto = False
 
@@ -70,12 +70,12 @@ class BoatAutopilot:
         self.speed_controller = None
         self.steer_controller = None
 
-        self.control_publisher = rospy.Publisher('control', Int32MultiArray, queue_size=1)
-        self.path_publisher = rospy.Publisher('path', Path, queue_size=1)
+        self.control_publisher = rospy.Publisher("control", Int32MultiArray, queue_size=1)
+        self.path_publisher = rospy.Publisher("path", Path, queue_size=1)
 
-        rospy.Subscriber('/pose', Float32MultiArray, self.callback, queue_size=1)
+        rospy.Subscriber("/pose", Float32MultiArray, self.callback, queue_size=1)
 
-        rospy.Service('switch_mode', SetBool, self.switch_mode_handler)
+        rospy.Service("switch_mode", SetBool, self.switch_mode_handler)
 
         rospy.spin()
 
@@ -96,17 +96,16 @@ class BoatAutopilot:
                 # generate path
                 if self.goal is None:
                     if sys.version[0] == '2':
-                        self.goal = list(map(eval, raw_input('goal: ').split()))
+                        self.goal = list(map(eval, raw_input("goal: ").split()))
                     else:
-                        self.goal = list(map(eval, input('goal: ').split()))
+                        self.goal = list(map(eval, input("goal: ").split()))
                     return
                 else:
                     self.path, self.circle_idx = boat_navigator(x, y, theta, *self.goal)
                     self.closest_idx = 0
 
                     self.speed_controller = PIDController(20, 10, 100)  # best 20 10 100
-                    self.steer_controller = PIDController(70, 10, 500)  # best 70 10 500
-
+                    self.steer_controller = PIDController(70, 10, 500)  # TODO: best 70 10 500， try 80 10 500
             else:
                 # calculate target point
                 end_idx = self.path.shape[1] - 1
@@ -168,7 +167,7 @@ class BoatAutopilot:
                 self.path_publisher.publish(Path())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         BoatAutopilot()
     except rospy.ROSInterruptException:
